@@ -4,6 +4,8 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 
+import logging
+
 class VirtualPins:
     def __init__(self, config):
         self._printer = config.get_printer()
@@ -12,6 +14,11 @@ class VirtualPins:
         self._pins = {}
         self._oid_count = 0
         self._config_callbacks = []
+        self._adcs_num = 0
+        self._adcs_values = []
+        for adc_value in config.get('adc_values', '').split(','):
+            value = float(adc_value)
+            self._adcs_values.append(value)
         self._printer.register_event_handler("klippy:connect",
                                              self.handle_connect)
 
@@ -29,7 +36,12 @@ class VirtualPins:
         elif pin_type == 'pwm':
             pin = PwmVirtualPin(self, pin_params)
         elif pin_type == 'adc':
-            pin = AdcVirtualPin(self, pin_params)
+            if self._adcs_num + 1 > len(self._adcs_values):
+                pin = AdcVirtualPin(self, pin_params)
+            else:
+                pin = AdcVirtualPin(self, pin_params)
+                pin._value = self._adcs_values[self._adcs_num]
+            self._adcs_num += 1
         elif pin_type == 'endstop':
             pin = EndstopVirtualPin(self, pin_params)
         else:
